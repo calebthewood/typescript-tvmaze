@@ -12749,6 +12749,7 @@ var axios_1 = __webpack_require__(/*! axios */ "./node_modules/axios/index.js");
 var $ = __webpack_require__(/*! jquery */ "./node_modules/jquery/dist/jquery.js");
 var $showsList = $("#showsList");
 var $episodesArea = $("#episodesArea");
+var $episodesList = $("#episodesList");
 var $searchForm = $("#searchForm");
 var API_URL = "https://api.tvmaze.com";
 var DEFAULT_IMG = "https://tinyurl.com/tv-missing";
@@ -12817,21 +12818,12 @@ function searchForShowAndDisplay() {
         });
     });
 }
-$searchForm.on("submit", function (evt) {
-    return __awaiter(this, void 0, void 0, function () {
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    evt.preventDefault();
-                    return [4 /*yield*/, searchForShowAndDisplay()];
-                case 1:
-                    _a.sent();
-                    return [2 /*return*/];
-            }
-        });
-    });
-});
-$showsList.on("click", ".Show-getEpisodes", getAndDisplayEpisodes);
+/**
+ * Handler Function to:
+ * 1. Retrieves show id from dom
+ * 2. makes AJAX call to get episodes lists
+ * 3. Populates DOM with episodes list
+ *  */
 function getAndDisplayEpisodes(evt) {
     return __awaiter(this, void 0, void 0, function () {
         var showId, episodes;
@@ -12839,7 +12831,6 @@ function getAndDisplayEpisodes(evt) {
             switch (_a.label) {
                 case 0:
                     showId = $(evt.target).closest(".Show").data("show-id");
-                    console.log(showId);
                     return [4 /*yield*/, getEpisodesOfShow(showId)];
                 case 1:
                     episodes = _a.sent();
@@ -12860,7 +12851,6 @@ function getEpisodesOfShow(id) {
                 case 0: return [4 /*yield*/, axios_1.default.get("".concat(API_URL, "/shows/").concat(id, "/episodes"))];
                 case 1:
                     res = _a.sent();
-                    console.log(res.data);
                     return [2 /*return*/, res.data.map(function (result) {
                             return {
                                 id: result.id,
@@ -12873,9 +12863,32 @@ function getEpisodesOfShow(id) {
         });
     });
 }
-/** Write a clear docstring for this function... */
+/** Populates the DOM with a list EpisodeInterfaces */
 function populateEpisodes(episodes) {
+    $episodesList.empty();
+    for (var _i = 0, episodes_1 = episodes; _i < episodes_1.length; _i++) {
+        var episode = episodes_1[_i];
+        var $episode = $("\n        <li id=".concat(episode.id, ">\n          ").concat(episode.name, " (Season ").concat(episode.season, ", Number ").concat(episode.number, ")\n        </li>\n        "));
+        $episodesList.append($episode);
+    }
+    $episodesArea.show();
 }
+// ************************************************* Event Listeners
+$searchForm.on("submit", function (evt) {
+    return __awaiter(this, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    evt.preventDefault();
+                    return [4 /*yield*/, searchForShowAndDisplay()];
+                case 1:
+                    _a.sent();
+                    return [2 /*return*/];
+            }
+        });
+    });
+});
+$showsList.on("click", ".Show-getEpisodes", getAndDisplayEpisodes);
 
 
 /***/ })
