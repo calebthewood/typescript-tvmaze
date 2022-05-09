@@ -12750,7 +12750,7 @@ var $ = __webpack_require__(/*! jquery */ "./node_modules/jquery/dist/jquery.js"
 var $showsList = $("#showsList");
 var $episodesArea = $("#episodesArea");
 var $searchForm = $("#searchForm");
-var API_URL = "https://api.tvmaze.com/search/shows";
+var API_URL = "https://api.tvmaze.com";
 var DEFAULT_IMG = "https://tinyurl.com/tv-missing";
 /*
 1. interface for shows
@@ -12760,42 +12760,6 @@ URL: /search/shows?q=:query
 Example: https://api.tvmaze.com/search/shows?q=girls
 
 */
-// [
-//   {
-//     id: 1767,
-//     name: "The Bletchley Circle",
-//     summary:
-//       `<p><b>The Bletchley Circle</b> follows the journey of four ordinary
-//          women with extraordinary skills that helped to end World War II.</p>
-//        <p>Set in 1952, Susan, Millie, Lucy and Jean have returned to their
-//          normal lives, modestly setting aside the part they played in
-//          producing crucial intelligence, which helped the Allies to victory
-//          and shortened the war. When Susan discovers a hidden code behind an
-//          unsolved murder she is met by skepticism from the police. She
-//          quickly realises she can only begin to crack the murders and bring
-//          the culprit to justice with her former friends.</p>`,
-//     image:
-//         "http://static.tvmaze.com/uploads/images/medium_portrait/147/369403.jpg"
-//   }
-// ]
-function getData(username) {
-    return __awaiter(this, void 0, void 0, function () {
-        var apiUrl, res, jsonResponse;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    apiUrl = "https://api.github.com/users/".concat(username);
-                    return [4 /*yield*/, fetch(apiUrl)];
-                case 1:
-                    res = _a.sent();
-                    return [4 /*yield*/, res.json()];
-                case 2:
-                    jsonResponse = _a.sent();
-                    return [2 /*return*/, jsonResponse.name];
-            }
-        });
-    });
-}
 /** Given a search term, search for tv shows that match that query.
  *
  *  Returns (promise) array of show objects: [show, show, ...].
@@ -12804,33 +12768,32 @@ function getData(username) {
  */
 function getShowsByTerm(term) {
     return __awaiter(this, void 0, void 0, function () {
-        var res, shows;
+        var res;
         return __generator(this, function (_a) {
             switch (_a.label) {
-                case 0: return [4 /*yield*/, axios_1.default.get("".concat(API_URL, "/?q=").concat(term))];
+                case 0: return [4 /*yield*/, axios_1.default.get("".concat(API_URL, "/search/shows?q=").concat(term))];
                 case 1:
                     res = _a.sent();
-                    console.log(res);
-                    shows = res.data.map(function (s) {
-                        return {
-                            id: s.show.id,
-                            name: s.show.name,
-                            summary: s.show.summary,
-                            image: s.show.image ? s.show.image.medium : DEFAULT_IMG
-                        };
-                    });
-                    return [2 /*return*/, shows];
+                    return [2 /*return*/, res.data.map(function (result) {
+                            var _a;
+                            var show = result.show;
+                            return {
+                                id: show.id,
+                                name: show.name,
+                                summary: show.summary,
+                                image: ((_a = show.image) === null || _a === void 0 ? void 0 : _a.medium) || DEFAULT_IMG,
+                            };
+                        })];
             }
         });
     });
 }
-;
 /** Given list of shows, create markup for each and to DOM */
 function populateShows(shows) {
     $showsList.empty();
     for (var _i = 0, shows_1 = shows; _i < shows_1.length; _i++) {
         var show = shows_1[_i];
-        var $show = $("<div data-show-id=\"".concat(show.id, "\" class=\"Show col-md-12 col-lg-6 mb-4\">\n         <div class=\"media\">\n           <img\n              src=\"http://static.tvmaze.com/uploads/images/medium_portrait/160/401704.jpg\"\n              alt=\"Bletchly Circle San Francisco\"\n              class=\"w-25 me-3\">\n           <div class=\"media-body\">\n             <h5 class=\"text-primary\">").concat(show.name, "</h5>\n             <div><small>").concat(show.summary, "</small></div>\n             <button class=\"btn btn-outline-light btn-sm Show-getEpisodes\">\n               Episodes\n             </button>\n           </div>\n         </div>\n       </div>\n      "));
+        var $show = $("<div data-show-id=\"".concat(show.id, "\" class=\"Show col-md-12 col-lg-6 mb-4\">\n         <div class=\"media\">\n           <img\n              src=").concat(show.image, "\n              alt=").concat(show.name, "\n              class=\"w-25 me-3\">\n           <div class=\"media-body\">\n             <h5 class=\"text-primary\">").concat(show.name, "</h5>\n             <div><small>").concat(show.summary, "</small></div>\n             <button class=\"btn btn-outline-light btn-sm Show-getEpisodes\">\n               Episodes\n             </button>\n           </div>\n         </div>\n       </div>\n      "));
         $showsList.append($show);
     }
 }
@@ -12868,12 +12831,51 @@ $searchForm.on("submit", function (evt) {
         });
     });
 });
+$showsList.on("click", ".Show-getEpisodes", getAndDisplayEpisodes);
+function getAndDisplayEpisodes(evt) {
+    return __awaiter(this, void 0, void 0, function () {
+        var showId, episodes;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    showId = $(evt.target).closest(".Show").data("show-id");
+                    console.log(showId);
+                    return [4 /*yield*/, getEpisodesOfShow(showId)];
+                case 1:
+                    episodes = _a.sent();
+                    populateEpisodes(episodes);
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
 /** Given a show ID, get from API and return (promise) array of episodes:
  *      { id, name, season, number }
  */
-// async function getEpisodesOfShow(id) { }
+function getEpisodesOfShow(id) {
+    return __awaiter(this, void 0, void 0, function () {
+        var res;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4 /*yield*/, axios_1.default.get("".concat(API_URL, "/shows/").concat(id, "/episodes"))];
+                case 1:
+                    res = _a.sent();
+                    console.log(res.data);
+                    return [2 /*return*/, res.data.map(function (result) {
+                            return {
+                                id: result.id,
+                                name: result.name,
+                                season: result.season,
+                                number: result.number
+                            };
+                        })];
+            }
+        });
+    });
+}
 /** Write a clear docstring for this function... */
-// function populateEpisodes(episodes) { }
+function populateEpisodes(episodes) {
+}
 
 
 /***/ })
