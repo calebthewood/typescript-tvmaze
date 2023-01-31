@@ -1,47 +1,33 @@
-import axios from "axios";
-import * as $ from "jquery";
+import axios from "axios"
+import * as $ from 'jquery';
+
+"use strict";
+
+interface IShowFromAPI {
+  id: number,
+  name: string,
+  summary: string,
+  image: { medium: string } | null
+}
+
+interface IShow extends Omit<IShowFromAPI, "image"> {
+  image: string
+}
+
+interface IEpisode {
+  id: number,
+  name: string,
+  season: number,
+  number: number,
+}
+
+const MISSING_IMAGE_URL = "https://tinyurl.com/missing-tv";
+const TVMAZE_API_URL = "http://api.tvmaze.com/";
 
 const $showsList = $("#showsList");
-const $episodesArea = $("#episodesArea");
 const $episodesList = $("#episodesList");
+const $episodesArea = $("#episodesArea");
 const $searchForm = $("#searchForm");
-
-const API_URL = "https://api.tvmaze.com";
-const DEFAULT_IMG = "https://tinyurl.com/tv-missing";
-
-interface ShowInterface {
-  id: number;
-  name: string;
-  summary: string;
-  image: { medium: string; } | null;
-}
-
-// interface ShowInterface {
-//   id: number;
-//   name: string;
-//   summary: string;
-//   image: string;
-// }
-
-interface IShow extends Omit<ShowInterface, "image"> {
-  image: string;
-}
-
-interface EpisodeInterface {
-  id: number;
-  name: string;
-  season: string;
-  number: string;
-}
-
-/*
-1. interface for shows
-2. make getShowsByTerm a generic
-
-URL: /search/shows?q=:query
-Example: https://api.tvmaze.com/search/shows?q=girls
-
-*/
 
 /** Given a search term, search for tv shows that match that query.
  *
@@ -51,32 +37,32 @@ Example: https://api.tvmaze.com/search/shows?q=girls
  */
 
 async function getShowsByTerm(term: string): Promise<IShow[]> {
-  const res = await axios.get(`${API_URL}/search/shows?q=${term}`);
+  const response = await axios({
+    url: `${TVMAZE_API_URL}search/shows?q=${term}`,
+    method: "GET",
+  });
 
-  return res.data.map((result: { show: ShowInterface; }): IShow => {
+  return response.data.map((result: { show: IShowFromAPI }): IShow => {
     const show = result.show;
     return {
       id: show.id,
       name: show.name,
       summary: show.summary,
-      image: show.image?.medium || DEFAULT_IMG,
+      image: show.image?.medium || MISSING_IMAGE_URL
     };
   });
 }
 
 /** Given list of shows, create markup for each and to DOM */
 
-function populateShows(shows: IShow[]): void {
+function populateShows(shows: IShow[]) {
   $showsList.empty();
 
   for (let show of shows) {
     const $show = $(
       `<div data-show-id="${show.id}" class="Show col-md-12 col-lg-6 mb-4">
          <div class="media">
-           <img
-              src=${show.image}
-              alt=${show.name}
-              class="w-25 me-3">
+           <img src="${show.image}" alt="${show.name}" class="w-25 me-3">
            <div class="media-body">
              <h5 class="text-primary">${show.name}</h5>
              <div><small>${show.summary}</small></div>
@@ -96,65 +82,74 @@ function populateShows(shows: IShow[]): void {
 /** Handle search form submission: get shows from API and display.
  *    Hide episodes area (that only gets shown if they ask for episodes)
  */
+
 async function searchForShowAndDisplay(): Promise<void> {
-  const term = $("#searchForm-term").val() as string;
-  const shows: IShow[] = await getShowsByTerm(term);
+
+  const searchTerm = $("#searchForm-term").val() as string;
+  const shows = await getShowsByTerm(searchTerm);
 
   $episodesArea.hide();
   populateShows(shows);
 }
 
-/**
- * Handler Function to:
- * 1. Retrieves show id from dom
- * 2. makes AJAX call to get episodes lists
- * 3. Populates DOM with episodes list
- *  */
-async function getAndDisplayEpisodes(evt: JQuery.ClickEvent): Promise<void> {
-  const showId = $(evt.target).closest(".Show").data("show-id");
-
-  const episodes = await getEpisodesOfShow(showId);
-  populateEpisodes(episodes);
-}
-
+$searchForm.on("submit", async function (evt: JQuery.SubmitEvent) {
+  evt.preventDefault();
+  await searchForShowAndDisplay();
+});
 
 /** Given a show ID, get from API and return (promise) array of episodes:
  *      { id, name, season, number }
  */
 
-async function getEpisodesOfShow(id: number): Promise<EpisodeInterface[]> {
-  const res = await axios.get(`${API_URL}/shows/${id}/episodes`);
-
-  return res.data.map((result: EpisodeInterface): EpisodeInterface => {
-    return {
-      id: result.id,
-      name: result.name,
-      season: result.season,
-      number: result.number
-    };
+async function getEpisodesOfShow(id: number) {
+  const response = await axios({
+    url: `${TVMAZE_API_URL}shows/${id}/episodes`,
+    method: "GET",
   });
 
+  return response.data.map((e: IEpisode) => ({
+    id: e.id,
+    name: e.name,
+    season: e.season,
+    number: e.number,
+  }));
 }
 
-/** Populates the DOM with a list EpisodeInterfaces */
+/** Given list of episodes, create markup for each and to DOM */
 
-function populateEpisodes(episodes: EpisodeInterface[]): void {
+function populateEpisodes(episodes: IEpisode[]) {
   $episodesList.empty();
+
   for (let episode of episodes) {
-    const $episode = $(`
-        <li id=${episode.id}>
-          ${episode.name} (Season ${episode.season}, Number ${episode.number})
-        </li>
-        `);
-    $episodesList.append($episode);
+    const $item = $(
+      `<li>
+         ${episode.name}
+         (season ${episode.season}, episode ${episode.number})
+       </li>
+      `
+    );
+
+    $episodesList.append($item);
   }
+
   $episodesArea.show();
 }
 
-// ************************************************* Event Listeners
-$searchForm.on("submit", async function (evt: JQuery.SubmitEvent): Promise<void> {
-  evt.preventDefault();
-  await searchForShowAndDisplay();
-});
+/** Handle click on episodes button: get episodes for show and display */
 
-$showsList.on("click", ".Show-getEpisodes", getAndDisplayEpisodes);
+async function getEpisodesAndDisplay(evt: JQuery.ClickEvent): Promise<void> {
+  // here's one way to get the ID of the show: search "closest" ancestor
+  // with the class of .Show (which is put onto the enclosing div, which
+  // has the .data-show-id attribute).
+  const showId = $(evt.target).closest(".Show").data("show-id");
+
+  // here's another way to get the ID of the show: search "closest" ancestor
+  // that has an attribute of 'data-show-id'. This is called an "attribute
+  // selector", and it's part of CSS selectors worth learning.
+  // const showId = $(evt.target).closest("[data-show-id]").data("show-id");
+
+  const episodes = await getEpisodesOfShow(showId);
+  populateEpisodes(episodes);
+}
+
+$showsList.on("click", ".Show-getEpisodes", getEpisodesAndDisplay);
